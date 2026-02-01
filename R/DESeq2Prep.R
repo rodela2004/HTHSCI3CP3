@@ -1,22 +1,17 @@
-library(dplyr)
-if (!require("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-  
-  BiocManager::install("DESeq2", force = TRUE)
-  
-  BiocManager::install("apeglm")
-  library(apeglm)
-
-BiocManager::install("vsn")
-library(vsn)
-library(DESeq2)
 library(here)
+source(here("R", "header.R"))
 
-path <-here()
+#Compile DESeq2 Object
+processed_data_path <- here("data/processed")
+setwd(here("data"))
+raw_file_paths <- list.files("raw")
+annotatedIDs <- list.files("metadata/")
+geneID <- read.delim(paste0("metadata/", annotatedIDs), header = T)
 
-processed_data_path <- paste0(path, "/data/processed")
 annot <- read.delim(paste0(processed_data_path, "/sample_annotation.txt")) %>% as.data.frame()
 annot <- annot[, -1, drop = FALSE]
+annot[,1] <- factor(annot[,1]) #Ensure Annotations are as factor
+
 dat <- read.delim(paste0(processed_data_path, "/dat_processed.tsv"))
 
 
@@ -28,8 +23,10 @@ minimum_sample_size = 3
 keep = rowSums(counts(deseq2_obj) >= 10) >= minimum_sample_size
 deseq2_obj = deseq2_obj[keep, ]
 
+
 dds = DESeq(deseq2_obj)
-res = results(dds, contrast = c('condition', 'Control', 'Treatment'))
+
+res = results(dds, contrast = c('condition', 'Treatment', 'Control'))
 
 summary(res, alpha = 0.05)
 head(res)
@@ -41,7 +38,7 @@ ntd <- normTransform(dds) #simple log transformation by log2(count + 1)
 library("vsn")
 meanSdPlot(assay(ntd))
 meanSdPlot(assay(vsd)) #variance stabilized counts
-
+install.packages("pheatmap")
 library(pheatmap)
 sampleDists <- dist(t(assay(vsd)))
 library("RColorBrewer")
@@ -56,9 +53,6 @@ pheatmap(sampleDistMatrix,
 
 plotPCA(vsd, intgroup=c("condition"))
 
-
-library(dplyr)
-library(ggplot2)
 # Bar plot
 bar_dat = data.frame(Direction = c('Upregulated', 'Downregulated'),
                      NSig = c(subset(res, padj < 0.05 & log2FoldChange > 0) %>% nrow(), 

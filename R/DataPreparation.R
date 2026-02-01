@@ -1,25 +1,19 @@
-#install.packages("here")
-
-# Set environment
-
 library("here")
-library("dplyr")
-setwd(here())
+source(here("R", "header.R"))
 
-path = "./data"
-raw_path = "./data/raw"
-raw_file_paths = list.files(raw_path)
-meta_path = "./data/metadata"
-annotatedIDs = paste0(meta_path, "/", list.files(meta_path))
+setwd(here("data"))
+
+raw_file_paths = list.files("raw")
+annotatedIDs = list.files("metadata/")
 
 dat = sapply(
   raw_file_paths, 
   function(x) 
-    read.delim(paste0(raw_path, '/', x), header = F))
+    read.delim(paste0("raw/", x), header = F))
 
 dat = do.call('cbind', dat)
 
-cat("[OK] Setting environment")
+message("[OK] Setting environment")
 
 rownames(dat) <- dat[,1]
 dat <- dat[, dat[1, ] != "Geneid"]
@@ -34,29 +28,28 @@ dat[] = lapply(dat, as.numeric)
 
 #Handling Missing Values 
 if (any(is.na(dat))) {
-  cat("[FAIL] Missing entries detected")
+  message("[FAIL] Missing entries detected")
 } else {
-  cat("[OK] No missing entries")
+  message("[OK] No missing entries")
 }
 
 if (all(dat %% 1 == 0)) {
-  cat("[OK] All data in Integers")
+  message("[OK] All data in Integers")
 } else {
-  cat("[FAIL] Not all data in Integers")
+  message("[FAIL] Not all data in Integers")
 }
 
-cat("[OK] Cleaning Data")
+message("[OK] Cleaning Data")
 
 #Make annotations
-geneID = read.delim(annotatedIDs, header = T)
+geneID = read.delim(paste0("metadata/", annotatedIDs), header = T)
 annot = data.frame(sample_name = colnames(dat))
 annot = cbind(annot, condition = c(rep('Control', 8), rep('Treatment', 9)))
-rownames(annot) <- annot[, 1]
-cat("[OK] Making Annotations")
+rownames(annot) <- colnames(dat)
+message("[OK] Making Annotations")
 
 #Write Files
-out_dir <- file.path(path, "processed")
-dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+out_dir <- file.path("processed")
 
 # write processed data
 write.table(
@@ -78,8 +71,10 @@ write.table(
   quote = FALSE,
 )
   
-cat(
+message(
   "[OK] Complete, outputs written to:",
   out_dir,
   "\n"
 )
+
+rm(list = ls())
